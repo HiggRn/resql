@@ -1,4 +1,4 @@
-use super::{Row, Table};
+use crate::backend::{Row, Table};
 
 pub enum Statement {
     Insert(Row),

@@ -1,7 +1,15 @@
-use resql::core::{InputBuffer, MetaCommand, Statement, Table};
+use std::env;
+
+use resql::backend::Table;
+use resql::core::{InputBuffer, MetaCommand, Statement};
 
 fn main() {
-    let mut table = Table::new();
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        println!("error: must supply a database filename.");
+        std::process::exit(0x0100);
+    }
+    let mut table = Table::open(args[1].as_str());
 
     loop {
         resql::print_prompt();
@@ -16,7 +24,7 @@ fn main() {
         }
 
         match input.chars().nth(0).unwrap() { // never empty, thus ok
-            '.' => MetaCommand::process(input),
+            '.' => MetaCommand::process(input, &mut table),
             _ => Statement::prepare(input).execute(&mut table)
         }
     }

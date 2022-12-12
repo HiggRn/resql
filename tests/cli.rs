@@ -1,10 +1,12 @@
-use std::io::Write;
+use std::io::{Write, ErrorKind};
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::thread;
 
-fn run(commands: Vec<String>) -> (Vec<String>, Vec<String>) {
+fn run(commands: Vec<String>, filename: &str) -> (Vec<String>, Vec<String>) {
     let mut child = Command::new("cargo")
         .arg("run")
+        .arg(filename)
         .stdin(Stdio::piped())
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
@@ -38,57 +40,136 @@ fn run(commands: Vec<String>) -> (Vec<String>, Vec<String>) {
     (out, err)
 }
 
-#[test]
-fn db_insert_a_row() {    
-    let (out, _) = run(vec![
-        "insert 1 user1 person1@example.com".into(),
-        "select".into(),
-        ".exit".into(),
-    ]);
+fn ensure_clean_fs<P>(test_filename: P)
+where
+    P: AsRef<Path>,
+{
+    std::fs::remove_file(test_filename)
+        .or_else(|e| match e.kind() {
+            ErrorKind::NotFound => Ok(()),
+            _ => Err(e),
+        })
+        .expect("could not clean up database files before running tests");
+}
 
-    let mut contain = false;
-    for s in out.iter() {
-        if s.contains("1: user1 person1@example.com") {
-            contain = true;
+fn clean_test(test_case: &str, test: fn(&str)) -> impl Fn() {
+    let test_filename = format!("test_db_{}.db", test_case);
+    let clean_test_wrapper = move || {
+        ensure_clean_fs(&test_filename);
+        test(&test_filename);
+        ensure_clean_fs(&test_filename);
+    };
+    clean_test_wrapper
+}
+
+#[test]
+fn db_insert_a_row() {
+    let test_case = "insert_a_row";
+
+    let test = |test_filename: &str| {
+        let (out, _) = run(vec![
+            "insert 1 user1 person1@example.com".into(),
+            "select".into(),
+            ".exit".into(),
+        ], test_filename);
+
+        let mut contain = false;
+        for s in out.iter() {
+            if s.contains("1: user1 person1@example.com") {
+                contain = true;
+            }
         }
-    }
-    assert!(contain);
+        assert!(contain);
+    };
+
+    clean_test(test_case, test)();
 }
 
 #[test]
 fn db_parse_error() {
-    let (_, err) = run(vec![
-        "insert -32 user1 user1@example.com".into(),
-        ".exit".into()
-    ]);
-    assert!(err[err.len() - 2].contains("[ERROR]can't parse '-32' to u32"));
+    let test_case = "parse_error";
+
+    let test = |test_filename: &str| {
+        let (_, err) = run(vec![
+            "insert -32 user1 user1@example.com".into(),
+            ".exit".into()
+        ], test_filename);
+        assert!(err[err.len() - 2].contains("[ERROR]can't parse '-32' to u32"));
+    };
+    
+    clean_test(test_case, test)();
 }
 
 #[test]
 fn db_syntax_error() {
-    let (_, err) = run(vec![
-        "insert 1 user1".into(),
-        ".exit".into()
-    ]);
-    assert!(err[err.len() - 2].contains("[ERROR]syntax error"));
+    let test_case = "syntax_error";
+
+    let test = |test_filename: &str| {
+        let (_, err) = run(vec![
+            "insert 1 user1".into(),
+            ".exit".into()
+        ], test_filename);
+        assert!(err[err.len() - 2].contains("[ERROR]syntax error"));
+    };
+    
+    clean_test(test_case, test)();
 }
 
 #[test]
 fn db_table_full() {
-    let mut cmds: Vec<String> = (1..7802)
-        .map(|i| format!("insert {} user{} person{}@example.com", i, i, i))
-        .collect();
-    cmds.push(".exit".into());
+    let test_case = "table_full";
+
+    let test = |test_filename: &str| {
+        let mut cmds: Vec<String> = (1..7802)
+            .map(|i| format!("insert {} user{} person{}@example.com", i, i, i))
+            .collect();
+        cmds.push(".exit".into());
     
-    let (_, err) = run(cmds);
-    assert!(err[err.len() - 2].contains("[ERROR]table is full"));
+        let (_, err) = run(cmds, test_filename);
+        assert!(err[err.len() - 2].contains("[ERROR]table is full"));
+    };
+    
+    clean_test(test_case, test)();
 }
 
 #[test]
 fn db_too_long() {
-    let (_, err) = run(vec![
-        "insert 1 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn abc".into(),
-        ".exit".into()
-    ]);
-    assert!(err[err.len() - 2].contains("[ERROR]'nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn' is too long for username"));
+    let test_case = "too_long";
+
+    let test = |test_filename: &str| {
+        let (_, err) = run(vec![
+            "insert 1 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn abc".into(),
+            ".exit".into()
+        ], test_filename);
+        assert!(err[err.len() - 2].contains("[ERROR]'nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn' is too long for username"));
+    };
+    
+    clean_test(test_case, test)();
+}
+
+#[test]
+fn db_keep_data() {
+    let test_case = "keep_data";
+
+    let test = |test_filename: &str| {
+        let _ = run(vec![
+            "insert 1 user1 user1@example.com".into(),
+            ".exit".into()
+        ], test_filename);
+
+        let (out, _) = run(vec![
+            "select".into(),
+            ".exit".into()
+        ], test_filename);
+
+        let mut contain = false;
+        for s in out.iter() {
+            if s.contains("1: user1 user1@example.com") {
+                contain = true;
+            }
+        }
+        assert!(contain);
+    };
+    
+    clean_test(test_case, test)();
 }

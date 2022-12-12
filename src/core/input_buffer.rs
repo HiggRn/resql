@@ -16,7 +16,7 @@ impl InputBuffer {
     pub fn read(&mut self) {
         io::stdin()
             .read_line(&mut self.buffer)
-            .expect("error: stdin read_line");
+            .expect("[ERROR]failed to read from stdin");
         if !self.buffer.is_empty() {
             self.input_length = self.buffer.len();
         }
