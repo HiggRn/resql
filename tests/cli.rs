@@ -1,7 +1,6 @@
 use std::io::{Write, ErrorKind};
 use std::path::Path;
 use std::process::{Command, Stdio};
-use std::thread;
 
 fn run(commands: Vec<String>, filename: &str) -> (Vec<String>, Vec<String>) {
     let mut child = Command::new("cargo")
@@ -20,7 +19,7 @@ fn run(commands: Vec<String>, filename: &str) -> (Vec<String>, Vec<String>) {
     // read stdin in the meantime, causing a deadlock.
     // Writing from another thread ensures that stdout is being read
     // at the same time, avoiding the problem.
-    let handle = thread::spawn(move || {
+    let handle = std::thread::spawn(move || {
         commands.iter().for_each(|cmd| {
             stdin.write_all(&[cmd.as_bytes(), b"\n"].concat())
                 .expect("failed to write to stdin");
@@ -40,10 +39,7 @@ fn run(commands: Vec<String>, filename: &str) -> (Vec<String>, Vec<String>) {
     (out, err)
 }
 
-fn ensure_clean_fs<P>(test_filename: P)
-where
-    P: AsRef<Path>,
-{
+fn ensure_clean_fs<P: AsRef<Path>>(test_filename: P) {
     std::fs::remove_file(test_filename)
         .or_else(|e| match e.kind() {
             ErrorKind::NotFound => Ok(()),
@@ -141,7 +137,8 @@ fn db_too_long() {
             "insert 1 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn abc".into(),
             ".exit".into()
         ], test_filename);
-        assert!(err[err.len() - 2].contains("[ERROR]'nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn' is too long for username"));
+        assert!(err[err.len() - 2]
+            .contains("[ERROR]'nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn' is too long for username"));
     };
     
     clean_test(test_case, test)();
@@ -153,7 +150,7 @@ fn db_keep_data() {
 
     let test = |test_filename: &str| {
         let _ = run(vec![
-            "insert 1 user1 user1@example.com".into(),
+            "insert 1 user1 person1@example.com".into(),
             ".exit".into()
         ], test_filename);
 
@@ -164,7 +161,7 @@ fn db_keep_data() {
 
         let mut contain = false;
         for s in out.iter() {
-            if s.contains("1: user1 user1@example.com") {
+            if s.contains("1: user1 person1@example.com") {
                 contain = true;
             }
         }

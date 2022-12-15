@@ -3,9 +3,11 @@ pub mod table;
 pub type Row = row::Row;
 pub type Table = table::Table;
 
+mod cursor;
 mod row;
 mod pager;
 
+type Cursor<'a> = cursor::Cursor<'a>;
 type Pager = pager::Pager;
 
 pub struct Page(Vec<u8>);

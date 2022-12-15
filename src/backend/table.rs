@@ -1,8 +1,8 @@
-use super::{Page, Pager, Row};
+use super::{Page, Pager, Row, Cursor};
 
 pub struct Table {
-    num_rows: usize,
-    pager: Pager
+    pub num_rows: usize,
+    pub pager: Pager
 }
 
 impl Table {    
@@ -38,23 +38,25 @@ impl Table {
             return;
         }
 
-        let (page, pos) = self.row_slot(self.num_rows);
+        let mut cursor = Cursor::from_end(self);
+
+        let (page, pos) = cursor.get_value();
         let bytes = row.serialize();
         page.0[pos..pos + bytes.len()].copy_from_slice(&bytes);
         self.num_rows += 1;
     }
 
     pub fn select(&mut self) {
-        for row_num in 0..self.num_rows {
-            let (buf, pos) = self.row_slot(row_num);
-            let row = Row::deserialize(&buf.0, pos);
-            println!("{}: {} {}", row.id, row.username.trim_matches('\0'), row.email.trim_matches('\0'));
-        }
-    }
+        let mut cursor = Cursor::from_start(self);
 
-    fn row_slot(&mut self, row_num: usize) -> (&mut Page, usize) {
-        let page_num = row_num / Page::MAX_ROWS;
-        let pos = row_num % Page::MAX_ROWS;
-        (self.pager.get_page(page_num), pos * Row::ROW_SIZE)
+        while !cursor.end_of_table {
+            let (buf, pos) = cursor.get_value();
+            let row = Row::deserialize(&buf.0, pos);
+            println!("{}: {} {}",
+                row.id,
+                row.username.trim_matches('\0'),
+                row.email.trim_matches('\0'));
+            cursor.advance();
+        }
     }
 }
