@@ -1,11 +1,12 @@
 use std::fs::{File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 
-use super::{page, row, Page};
+use super::{page, Page};
 
 pub struct Pager {
     file_descriptor: File,
     file_length: usize,
+    num_pages: usize,
     pages: Vec<Option<Page>>,
 }
 
@@ -31,6 +32,12 @@ impl Pager {
             })
             .len() as usize;
 
+        let num_pages = file_length / page::PAGE_SIZE;
+        if file_length % page::PAGE_SIZE != 0 {
+            crate::error(format!("corrupted file '{filename}'").as_str());
+            std::process::exit(1);
+        }
+
         let mut pages = Vec::with_capacity(MAX_PAGES);
         for _ in 0..MAX_PAGES {
             pages.push(None);
@@ -39,12 +46,13 @@ impl Pager {
         Self {
             file_descriptor,
             file_length,
+            num_pages,
             pages,
         }
     }
 
-    pub fn get_num_rows(&self) -> usize {
-        self.file_length / row::ROW_SIZE
+    pub fn get_num_pages(&self) -> usize {
+        self.num_pages
     }
 
     pub fn get_page(&mut self, page_num: usize) -> &mut Page {
@@ -55,7 +63,9 @@ impl Pager {
 
         if self.pages[page_num].is_none() {
             // cache miss
-            self.pages[page_num] = Some(vec![0; page::PAGE_SIZE]); // initialize empty page
+            self.pages[page_num] = Some(Page {
+                0: vec![0; page::PAGE_SIZE],
+            }); // initialize empty page
             let mut num_pages = self.file_length / page::PAGE_SIZE;
 
             if self.file_length % page::PAGE_SIZE != 0 {
@@ -80,14 +90,18 @@ impl Pager {
                     crate::error("partial database file.")
                 }
 
-                self.pages[page_num] = Some(Vec::from(buf));
+                self.pages[page_num] = Some(Page { 0: Vec::from(buf) });
+
+                if page_num >= self.num_pages {
+                    self.num_pages = page_num + 1;
+                }
             }
         }
 
         self.pages[page_num].as_mut().unwrap()
     }
 
-    pub fn flush(&mut self, page_num: usize, size: usize) {
+    pub fn flush(&mut self, page_num: usize) {
         if self.pages[page_num].is_none() {
             return;
         }
@@ -100,7 +114,7 @@ impl Pager {
             });
 
         self.file_descriptor
-            .write_all(&self.pages[page_num].as_ref().unwrap()[0..size])
+            .write_all(&self.pages[page_num].as_ref().unwrap().0[0..page::PAGE_SIZE])
             .unwrap_or_else(|e| {
                 crate::error(format!("failed to write to file. {e}").as_str());
                 std::process::exit(1);

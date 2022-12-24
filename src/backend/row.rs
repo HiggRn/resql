@@ -28,9 +28,9 @@ impl Row {
         buf
     }
 
-    pub fn deserialize(buf: &[u8], pos: usize) -> Self {
+    pub fn deserialize(buf: &[u8]) -> Self {
         let mut bytes = vec![0; ROW_SIZE];
-        bytes.clone_from_slice(&buf[pos..pos + ROW_SIZE]);
+        bytes.clone_from_slice(&buf[0..ROW_SIZE]);
 
         let id = LittleEndian::read_u32(&bytes[0..ID_SIZE]);
         let username = Self::read_string(&bytes, USERNAME_OFFSET, USERNAME_SIZE);

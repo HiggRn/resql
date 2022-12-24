@@ -177,3 +177,23 @@ fn db_keep_data() {
 
     clean_test(test_case, test)();
 }
+
+#[test]
+fn test_constant() {
+    let test_case = "test_constants";
+
+    let test = |test_filename: &str| {
+        let (out, _) = run(vec![".constants".into(), ".exit".into()], test_filename);
+
+        let mut contain = false;
+        for s in out.iter() {
+            if s.contains("COMMON_HEADER_SIZE") {
+                contain = true;
+                break;
+            }
+        }
+        assert!(contain);
+    };
+
+    clean_test(test_case, test)();
+}
