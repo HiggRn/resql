@@ -1,4 +1,4 @@
-use std::io::{Write, ErrorKind};
+use std::io::{ErrorKind, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -11,7 +11,7 @@ fn run(commands: Vec<String>, filename: &str) -> (Vec<String>, Vec<String>) {
         .stderr(Stdio::piped())
         .spawn()
         .expect("failed to spawn child process");
-    
+
     let mut stdin = child.stdin.take().expect("failed to get stdin");
 
     // If the child process fills its stdout buffer, it may end up
@@ -21,7 +21,8 @@ fn run(commands: Vec<String>, filename: &str) -> (Vec<String>, Vec<String>) {
     // at the same time, avoiding the problem.
     let handle = std::thread::spawn(move || {
         commands.iter().for_each(|cmd| {
-            stdin.write_all(&[cmd.as_bytes(), b"\n"].concat())
+            stdin
+                .write_all(&[cmd.as_bytes(), b"\n"].concat())
                 .expect("failed to write to stdin");
         });
     });
@@ -31,10 +32,14 @@ fn run(commands: Vec<String>, filename: &str) -> (Vec<String>, Vec<String>) {
     handle.join().unwrap();
     let out: Vec<String> = String::from_utf8_lossy(&output.stdout)
         .to_string()
-        .split("\n").map(String::from).collect();
+        .split("\n")
+        .map(String::from)
+        .collect();
     let err: Vec<String> = String::from_utf8_lossy(&output.stderr)
         .to_string()
-        .split("\n").map(String::from).collect();
+        .split("\n")
+        .map(String::from)
+        .collect();
 
     (out, err)
 }
@@ -63,16 +68,20 @@ fn db_insert_a_row() {
     let test_case = "insert_a_row";
 
     let test = |test_filename: &str| {
-        let (out, _) = run(vec![
-            "insert 1 user1 person1@example.com".into(),
-            "select".into(),
-            ".exit".into(),
-        ], test_filename);
+        let (out, _) = run(
+            vec![
+                "insert 1 user1 person1@example.com".into(),
+                "select".into(),
+                ".exit".into(),
+            ],
+            test_filename,
+        );
 
         let mut contain = false;
         for s in out.iter() {
             if s.contains("1: user1 person1@example.com") {
                 contain = true;
+                break;
             }
         }
         assert!(contain);
@@ -86,13 +95,13 @@ fn db_parse_error() {
     let test_case = "parse_error";
 
     let test = |test_filename: &str| {
-        let (_, err) = run(vec![
-            "insert -32 user1 user1@example.com".into(),
-            ".exit".into()
-        ], test_filename);
+        let (_, err) = run(
+            vec!["insert -32 user1 user1@example.com".into(), ".exit".into()],
+            test_filename,
+        );
         assert!(err[err.len() - 2].contains("[ERROR]can't parse '-32' to u32"));
     };
-    
+
     clean_test(test_case, test)();
 }
 
@@ -101,13 +110,10 @@ fn db_syntax_error() {
     let test_case = "syntax_error";
 
     let test = |test_filename: &str| {
-        let (_, err) = run(vec![
-            "insert 1 user1".into(),
-            ".exit".into()
-        ], test_filename);
+        let (_, err) = run(vec!["insert 1 user1".into(), ".exit".into()], test_filename);
         assert!(err[err.len() - 2].contains("[ERROR]syntax error"));
     };
-    
+
     clean_test(test_case, test)();
 }
 
@@ -120,11 +126,11 @@ fn db_table_full() {
             .map(|i| format!("insert {} user{} person{}@example.com", i, i, i))
             .collect();
         cmds.push(".exit".into());
-    
+
         let (_, err) = run(cmds, test_filename);
         assert!(err[err.len() - 2].contains("[ERROR]table is full"));
     };
-    
+
     clean_test(test_case, test)();
 }
 
@@ -133,14 +139,17 @@ fn db_too_long() {
     let test_case = "too_long";
 
     let test = |test_filename: &str| {
-        let (_, err) = run(vec![
-            "insert 1 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn abc".into(),
-            ".exit".into()
-        ], test_filename);
+        let (_, err) = run(
+            vec![
+                "insert 1 nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn abc".into(),
+                ".exit".into(),
+            ],
+            test_filename,
+        );
         assert!(err[err.len() - 2]
             .contains("[ERROR]'nnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn' is too long for username"));
     };
-    
+
     clean_test(test_case, test)();
 }
 
@@ -149,24 +158,22 @@ fn db_keep_data() {
     let test_case = "keep_data";
 
     let test = |test_filename: &str| {
-        let _ = run(vec![
-            "insert 1 user1 person1@example.com".into(),
-            ".exit".into()
-        ], test_filename);
+        let _ = run(
+            vec!["insert 1 user1 person1@example.com".into(), ".exit".into()],
+            test_filename,
+        );
 
-        let (out, _) = run(vec![
-            "select".into(),
-            ".exit".into()
-        ], test_filename);
+        let (out, _) = run(vec!["select".into(), ".exit".into()], test_filename);
 
         let mut contain = false;
         for s in out.iter() {
             if s.contains("1: user1 person1@example.com") {
                 contain = true;
+                break;
             }
         }
         assert!(contain);
     };
-    
+
     clean_test(test_case, test)();
 }

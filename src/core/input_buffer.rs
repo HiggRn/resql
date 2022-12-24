@@ -1,15 +1,16 @@
 use std::io;
 
+#[derive(Default)]
 pub struct InputBuffer {
     buffer: String,
-    input_length: usize
+    input_length: usize,
 }
 
 impl InputBuffer {
-    pub fn new() -> InputBuffer {
-        InputBuffer {
+    pub fn new() -> Self {
+        Self {
             buffer: String::new(),
-            input_length: 0
+            input_length: 0,
         }
     }
 

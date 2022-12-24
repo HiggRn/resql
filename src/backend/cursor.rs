@@ -1,33 +1,33 @@
-use super::{Page, Row, Table};
+use super::{page, row, Page, Table};
 
 pub struct Cursor<'a> {
     table: &'a mut Table,
     row_num: usize,
-    pub end_of_table: bool
+    pub end_of_table: bool,
 }
 
-impl Cursor<'_> {
-    pub fn from_start(table: &mut Table) -> Cursor {
-        Cursor {
+impl<'a> Cursor<'a> {
+    pub fn from_start(table: &'a mut Table) -> Self {
+        Self {
             row_num: 0,
             end_of_table: table.num_rows == 0,
-            table
+            table,
         }
     }
 
-    pub fn from_end(table: &mut Table) -> Cursor {
-        Cursor {
+    pub fn from_end(table: &'a mut Table) -> Self {
+        Self {
             row_num: table.num_rows,
             end_of_table: true,
-            table
+            table,
         }
     }
 
     pub fn get_value(&mut self) -> (&mut Page, usize) {
-        let page_num = self.row_num / Page::MAX_ROWS;
-        let pos = self.row_num % Page::MAX_ROWS;
+        let page_num = self.row_num / page::MAX_ROWS;
+        let pos = self.row_num % page::MAX_ROWS;
 
-        (self.table.pager.get_page(page_num), pos * Row::ROW_SIZE)
+        (self.table.pager.get_page(page_num), pos * row::ROW_SIZE)
     }
 
     pub fn advance(&mut self) {

@@ -2,7 +2,7 @@ use crate::backend::Table;
 
 pub enum MetaCommand {
     Exit,
-    Error(String)
+    Error(String),
 }
 
 impl MetaCommand {
@@ -10,12 +10,12 @@ impl MetaCommand {
         let words: Vec<&str> = input.split_ascii_whitespace().collect();
         let result = match words[0] {
             ".exit" => Self::Exit,
-            _ => Self::Error(format!("unknown metacommand: '{}'", words[0]))
+            _ => Self::Error(format!("unknown metacommand: '{}'", words[0])),
         };
 
         match &result {
             MetaCommand::Exit => Self::exit(0, table),
-            MetaCommand::Error(s) => eprintln!("[ERROR]{s}")
+            MetaCommand::Error(s) => eprintln!("[ERROR]{s}"),
         }
     }
 

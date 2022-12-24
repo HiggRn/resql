@@ -19,13 +19,15 @@ fn main() {
         let Some(input) = input_buffer.get_input() else {
             continue;
         };
-        if input.is_empty() { // guarantee that unwrap() is ok
+        if input.is_empty() {
+            // guarantee that unwrap() is ok
             continue;
         }
 
-        match input.chars().nth(0).unwrap() { // never empty, thus ok
+        match input.chars().next().unwrap() {
+            // never empty, thus ok
             '.' => MetaCommand::process(input, &mut table),
-            _ => Statement::prepare(input).execute(&mut table)
+            _ => Statement::prepare(input).execute(&mut table),
         }
     }
 }
