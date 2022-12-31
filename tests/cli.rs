@@ -197,3 +197,48 @@ fn test_constant() {
 
     clean_test(test_case, test)();
 }
+
+#[test]
+fn test_ordering() {
+    let test_case = "test_ordering";
+
+    let test = |test_filename: &str| {
+        let (out, _) = run(vec![
+            "insert 1 user1 person1@example.com".into(),
+            "insert 2 user2 person2@example.com".into(),
+            "insert 4 user4 person4@example.com".into(),
+            "insert 5 user5 person5@example.com".into(),
+            "insert 3 user3 person3@example.com".into(),
+            "select".into(),
+            ".exit".into(),
+        ], test_filename);
+
+        for (num, line) in out[1..5].iter().enumerate() {
+            let index = num + 2;
+            assert_eq!(line, &format!("{index}: user{index} person{index}@example.com"));
+        }
+    };
+
+    clean_test(test_case, test)();
+}
+
+#[test]
+fn test_duplicate() {
+    let test_case = "test_ordering";
+
+    let test = |test_filename: &str| {
+        let (_, err) = run(vec![
+            "insert 1 user1 person1@example.com".into(),
+            "insert 2 user2 person2@example.com".into(),
+            "insert 4 user4 person4@example.com".into(),
+            "insert 5 user5 person5@example.com".into(),
+            "insert 3 user3 person3@example.com".into(),
+            "insert 2 user2 person2@example.com".into(),
+            ".exit".into(),
+        ], test_filename);
+
+        assert!(err[err.len() - 2].contains("duplicate key '2'"));
+    };
+
+    clean_test(test_case, test)();
+}

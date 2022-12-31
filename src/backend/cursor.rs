@@ -3,7 +3,7 @@ use super::{page, Row, Table};
 pub struct Cursor<'a> {
     table: &'a mut Table,
     page_num: usize,
-    cell_num: u32,
+    pub cell_num: u32,
     pub end_of_table: bool,
 }
 
@@ -22,17 +22,16 @@ impl<'a> Cursor<'a> {
         }
     }
 
-    pub fn from_end(table: &'a mut Table) -> Self {
-        let cell_num = table
-            .pager
-            .get_page(table.root_page_num)
-            .get_leaf_node_num_cells();
+    pub fn from_pos(table: &'a mut Table, page_num: usize, cell_num: u32) -> Cursor {
+        let is_last_page = page_num == table.pager.get_num_pages();
+        let page = table.pager.get_page(page_num);
+        let is_last_cell = page.get_leaf_node_num_cells() == cell_num;
 
-        Self {
-            page_num: table.root_page_num,
-            cell_num,
-            end_of_table: true,
+        Cursor {
             table,
+            page_num,
+            cell_num,
+            end_of_table: is_last_page && is_last_cell
         }
     }
 

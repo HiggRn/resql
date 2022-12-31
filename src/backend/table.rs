@@ -28,14 +28,24 @@ impl Table {
 
     pub fn insert(&mut self, row: &Row) {
         let page = self.pager.get_page(self.root_page_num);
-        if page.get_leaf_node_num_cells() as usize >= page::LEAF_MAX_CELLS {
+        let num_cells = page.get_leaf_node_num_cells();
+        if  num_cells as usize >= page::LEAF_MAX_CELLS {
             crate::error("table is full");
             return;
         }
 
-        let mut cursor = Cursor::from_end(self);
+        let key_to_insert = row.id;
+        let cell_num = page.find(key_to_insert);
 
-        cursor.leaf_node_insert(row.id, row);
+        if cell_num < num_cells {
+            let key_at_index = page.get_leaf_node_key(cell_num);
+            if key_at_index == key_to_insert {
+                crate::error(format!("duplicate key '{key_to_insert}'").as_str())
+            }
+        }
+
+        let mut cursor = Cursor::from_pos(self, self.root_page_num, cell_num);
+        cursor.leaf_node_insert(key_to_insert, row);
     }
 
     pub fn select(&mut self) {

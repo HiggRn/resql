@@ -37,7 +37,15 @@ pub const PAGE_SIZE: usize = 4096;
 
 impl Page {
     pub fn init_leaf_node(&mut self) {
+        self.set_type(NodeType::Leaf);
         self.set_leaf_node_num_cells(0);
+    }
+
+    pub fn get_type(&self) -> NodeType {
+        match self.0[TYPE_OFFSET] {
+            0 => NodeType::Internal,
+            _ => NodeType::Leaf,
+        }
     }
 
     pub fn get_leaf_node_num_cells(&self) -> u32 {
@@ -68,6 +76,13 @@ impl Page {
         Vec::from(&self.0[start..end])
     }
 
+    pub fn set_type(&mut self, node_type: NodeType) {
+        self.0[TYPE_OFFSET] = match node_type {
+            NodeType::Internal => 0,
+            NodeType::Leaf => 1,
+        };
+    }
+
     pub fn set_leaf_node_num_cells(&mut self, num_cells: u32) {
         let start = LEAF_NUM_CELLS_OFFSET;
         let end = LEAF_NUM_CELLS_OFFSET + LEAF_NUM_CELLS_SIZE;
@@ -89,6 +104,24 @@ impl Page {
         let start = LEAF_HEADER_SIZE + (cell_num as usize * LEAF_CELL_SIZE) + LEAF_KEY_SIZE;
         let end = start + LEAF_VALUE_SIZE;
         self.0[start..end].copy_from_slice(&value);
+    }
+
+    pub fn find(&self, key: u32) -> u32 {
+        let mut min_index = 0;
+        let mut one_past_max_index = self.get_leaf_node_num_cells();
+        while one_past_max_index != min_index {
+            let index = (min_index + one_past_max_index) / 2;
+            let key_at_index = self.get_leaf_node_key(index);
+            if key == key_at_index {
+                return index;
+            } else if key < key_at_index {
+                one_past_max_index = index;
+            } else {
+                min_index = index + 1;
+            }
+        }
+
+        min_index
     }
 
     pub fn print_leaf_node(&mut self) {
