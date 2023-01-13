@@ -1,8 +1,7 @@
 use std::cmp;
 use std::mem;
 
-use byteorder::{ByteOrder, LittleEndian};
-
+#[derive(Clone, Default)]
 pub struct Row {
     pub id: u32,
     pub username: String,
@@ -21,7 +20,7 @@ pub const ROW_SIZE: usize = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 impl Row {
     pub fn serialize(&self) -> Vec<u8> {
         let mut buf = vec![0; ROW_SIZE];
-        LittleEndian::write_u32(&mut buf[0..ID_SIZE], self.id);
+        buf[0..ID_SIZE].clone_from_slice(&self.id.to_ne_bytes());
         Self::write_string(&mut buf, USERNAME_OFFSET, &self.username, USERNAME_SIZE);
         Self::write_string(&mut buf, EMAIL_OFFSET, &self.email, EMAIL_SIZE);
 
@@ -32,7 +31,7 @@ impl Row {
         let mut bytes = vec![0; ROW_SIZE];
         bytes.clone_from_slice(&buf[0..ROW_SIZE]);
 
-        let id = LittleEndian::read_u32(&bytes[0..ID_SIZE]);
+        let id = u32::from_ne_bytes(bytes[0..ID_SIZE].try_into().unwrap());
         let username = Self::read_string(&bytes, USERNAME_OFFSET, USERNAME_SIZE);
         let email = Self::read_string(&bytes, EMAIL_OFFSET, EMAIL_SIZE);
 

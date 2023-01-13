@@ -22,7 +22,7 @@ impl MetaCommand {
                 table.close();
                 Self::exit(0);
             }
-            MetaCommand::BTree => table.pager.get_page(0).print_leaf_node(),
+            MetaCommand::BTree => table.pager.print(table.root_page_num, 0),
             MetaCommand::Constants => Table::print_constants(),
             MetaCommand::Error(s) => crate::error(s),
         }

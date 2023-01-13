@@ -118,23 +118,6 @@ fn db_syntax_error() {
 }
 
 #[test]
-fn db_table_full() {
-    let test_case = "table_full";
-
-    let test = |test_filename: &str| {
-        let mut cmds: Vec<String> = (1..7802)
-            .map(|i| format!("insert {} user{} person{}@example.com", i, i, i))
-            .collect();
-        cmds.push(".exit".into());
-
-        let (_, err) = run(cmds, test_filename);
-        assert!(err[err.len() - 2].contains("[ERROR]table is full"));
-    };
-
-    clean_test(test_case, test)();
-}
-
-#[test]
 fn db_too_long() {
     let test_case = "too_long";
 
@@ -203,19 +186,25 @@ fn test_ordering() {
     let test_case = "test_ordering";
 
     let test = |test_filename: &str| {
-        let (out, _) = run(vec![
-            "insert 1 user1 person1@example.com".into(),
-            "insert 2 user2 person2@example.com".into(),
-            "insert 4 user4 person4@example.com".into(),
-            "insert 5 user5 person5@example.com".into(),
-            "insert 3 user3 person3@example.com".into(),
-            "select".into(),
-            ".exit".into(),
-        ], test_filename);
+        let (out, _) = run(
+            vec![
+                "insert 1 user1 person1@example.com".into(),
+                "insert 2 user2 person2@example.com".into(),
+                "insert 4 user4 person4@example.com".into(),
+                "insert 5 user5 person5@example.com".into(),
+                "insert 3 user3 person3@example.com".into(),
+                "select".into(),
+                ".exit".into(),
+            ],
+            test_filename,
+        );
 
         for (num, line) in out[1..5].iter().enumerate() {
             let index = num + 2;
-            assert_eq!(line, &format!("{index}: user{index} person{index}@example.com"));
+            assert_eq!(
+                line,
+                &format!("{index}: user{index} person{index}@example.com")
+            );
         }
     };
 
@@ -227,17 +216,63 @@ fn test_duplicate() {
     let test_case = "test_ordering";
 
     let test = |test_filename: &str| {
-        let (_, err) = run(vec![
-            "insert 1 user1 person1@example.com".into(),
-            "insert 2 user2 person2@example.com".into(),
-            "insert 4 user4 person4@example.com".into(),
-            "insert 5 user5 person5@example.com".into(),
-            "insert 3 user3 person3@example.com".into(),
-            "insert 2 user2 person2@example.com".into(),
-            ".exit".into(),
-        ], test_filename);
+        let (_, err) = run(
+            vec![
+                "insert 1 user1 person1@example.com".into(),
+                "insert 2 user2 person2@example.com".into(),
+                "insert 4 user4 person4@example.com".into(),
+                "insert 5 user5 person5@example.com".into(),
+                "insert 3 user3 person3@example.com".into(),
+                "insert 2 user2 person2@example.com".into(),
+                ".exit".into(),
+            ],
+            test_filename,
+        );
 
         assert!(err[err.len() - 2].contains("duplicate key '2'"));
+    };
+
+    clean_test(test_case, test)();
+}
+
+#[test]
+fn test_tree() {
+    let test_case = "test_tree";
+
+    let test = |test_filename: &str| {
+        let mut cmds = Vec::new();
+        for i in 1..15 {
+            cmds.push(format!("insert {i} user{i} person{i}@example.com"));
+        }
+        cmds.push(".btree".into());
+        cmds.push(".exit".into());
+        let (out, _) = run(cmds, test_filename);
+        let expected_out = [
+            "- internal (size 1)",
+            "  - leaf (size 7)",
+            "    - key 1",
+            "    - key 2",
+            "    - key 3",
+            "    - key 4",
+            "    - key 5",
+            "    - key 6",
+            "    - key 7",
+            "  - key 7",
+            "  - leaf (size 7)",
+            "    - key 8",
+            "    - key 9",
+            "    - key 10",
+            "    - key 11",
+            "    - key 12",
+            "    - key 13",
+            "    - key 14",
+            "exitting...",
+            "",
+        ];
+        for (i, s) in out.iter().enumerate() {
+            let str = s.trim_start_matches(">> ").trim_end();
+            assert_eq!(str, expected_out[i]);
+        }
     };
 
     clean_test(test_case, test)();

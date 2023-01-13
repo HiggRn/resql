@@ -8,9 +8,11 @@ pub struct Table {
 impl Table {
     pub fn open(filename: &str) -> Self {
         let mut pager = Pager::new(filename);
-        if pager.get_num_pages() == 0 {
+        if pager.num_pages == 0 {
             // New database file
-            pager.get_page(0).init_leaf_node();
+            let page = pager.get_page(0);
+            page.init_leaf();
+            page.set_is_root(true);
         }
 
         Self {
@@ -20,7 +22,7 @@ impl Table {
     }
 
     pub fn close(&mut self) {
-        let num_pages = self.pager.get_num_pages();
+        let num_pages = self.pager.num_pages;
         for page_num in 0..num_pages {
             self.pager.flush(page_num);
         }
@@ -28,24 +30,20 @@ impl Table {
 
     pub fn insert(&mut self, row: &Row) {
         let page = self.pager.get_page(self.root_page_num);
-        let num_cells = page.get_leaf_node_num_cells();
-        if  num_cells as usize >= page::LEAF_MAX_CELLS {
-            crate::error("table is full");
-            return;
-        }
+        let num_cells = page.get_leaf_num_cells();
 
-        let key_to_insert = row.id;
+        let key_to_insert = row.id as usize;
         let cell_num = page.find(key_to_insert);
 
         if cell_num < num_cells {
-            let key_at_index = page.get_leaf_node_key(cell_num);
+            let key_at_index = page.get_leaf_key(cell_num);
             if key_at_index == key_to_insert {
                 crate::error(format!("duplicate key '{key_to_insert}'").as_str())
             }
         }
 
         let mut cursor = Cursor::from_pos(self, self.root_page_num, cell_num);
-        cursor.leaf_node_insert(key_to_insert, row);
+        cursor.leaf_insert(key_to_insert, row);
     }
 
     pub fn select(&mut self) {
@@ -61,6 +59,24 @@ impl Table {
             );
             cursor.advance();
         }
+    }
+
+    pub fn new_root(&mut self, right_child_page_num: usize) {
+        self.pager.num_pages += 1;
+        let root_copy = self.pager.copy_page(self.root_page_num).unwrap();
+        let left_child_page_num = self.pager.get_unused_page_num();
+        let left_child = self.pager.get_page(left_child_page_num);
+        left_child.clone_from(&root_copy);
+        left_child.set_is_root(false);
+        let left_child_max_key = left_child.get_max_key();
+
+        let root = self.pager.get_page(self.root_page_num);
+        root.init_internal();
+        root.set_is_root(true);
+        root.set_internal_num_keys(1);
+        root.set_internal_child(0, left_child_page_num);
+        root.set_internal_key(0, left_child_max_key);
+        root.set_internal_right_child(right_child_page_num);
     }
 
     pub fn print_constants() {
