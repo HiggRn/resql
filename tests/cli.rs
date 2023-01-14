@@ -64,7 +64,7 @@ fn clean_test(test_case: &str, test: fn(&str)) -> impl Fn() {
 }
 
 #[test]
-fn db_insert_a_row() {
+fn test_insert_a_row() {
     let test_case = "insert_a_row";
 
     let test = |test_filename: &str| {
@@ -91,7 +91,7 @@ fn db_insert_a_row() {
 }
 
 #[test]
-fn db_parse_error() {
+fn test_parse_error() {
     let test_case = "parse_error";
 
     let test = |test_filename: &str| {
@@ -106,7 +106,7 @@ fn db_parse_error() {
 }
 
 #[test]
-fn db_syntax_error() {
+fn test_syntax_error() {
     let test_case = "syntax_error";
 
     let test = |test_filename: &str| {
@@ -118,7 +118,7 @@ fn db_syntax_error() {
 }
 
 #[test]
-fn db_too_long() {
+fn test_too_long() {
     let test_case = "too_long";
 
     let test = |test_filename: &str| {
@@ -137,7 +137,7 @@ fn db_too_long() {
 }
 
 #[test]
-fn db_keep_data() {
+fn test_keep_data() {
     let test_case = "keep_data";
 
     let test = |test_filename: &str| {
@@ -162,8 +162,8 @@ fn db_keep_data() {
 }
 
 #[test]
-fn test_constant() {
-    let test_case = "test_constants";
+fn test_constants() {
+    let test_case = "constants";
 
     let test = |test_filename: &str| {
         let (out, _) = run(vec![".constants".into(), ".exit".into()], test_filename);
@@ -183,7 +183,7 @@ fn test_constant() {
 
 #[test]
 fn test_ordering() {
-    let test_case = "test_ordering";
+    let test_case = "ordering";
 
     let test = |test_filename: &str| {
         let (out, _) = run(
@@ -213,7 +213,7 @@ fn test_ordering() {
 
 #[test]
 fn test_duplicate() {
-    let test_case = "test_ordering";
+    let test_case = "duplicate";
 
     let test = |test_filename: &str| {
         let (_, err) = run(
@@ -237,7 +237,7 @@ fn test_duplicate() {
 
 #[test]
 fn test_tree() {
-    let test_case = "test_tree";
+    let test_case = "tree";
 
     let test = |test_filename: &str| {
         let mut cmds = Vec::new();
@@ -272,6 +272,25 @@ fn test_tree() {
         for (i, s) in out.iter().enumerate() {
             let str = s.trim_start_matches(">> ").trim_end();
             assert_eq!(str, expected_out[i]);
+        }
+    };
+
+    clean_test(test_case, test)();
+}
+
+#[test]
+fn test_search_internal_node() {
+    let test_case = "search_internal_node";
+
+    let test = |test_filename: &str| {
+        let mut cmds = Vec::new();
+        for i in 1..16 {
+            cmds.push(format!("insert {i} user{i} person{i}@example.com"));
+        }
+        cmds.push(".exit".into());
+        let (_, err) = run(cmds, test_filename);
+        for s in err.iter() {
+            assert!(!s.contains("need to implement"));
         }
     };
 

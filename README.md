@@ -3,4 +3,4 @@ Try to implement a simple sqlite in Rust following the tutorial of [cstack/db_tu
 
 Tests are completely written in Rust. No 'unsafe' code.
 
-Now finished part 10.
+Now finished part 11.

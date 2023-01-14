@@ -142,7 +142,7 @@ impl Page {
         self.0[start..end].copy_from_slice(&value);
     }
 
-    pub fn find(&self, key: usize) -> usize {
+    pub fn leaf_find(&self, key: usize) -> usize {
         let mut min_index = 0;
         let mut one_past_max_index = self.get_leaf_num_cells();
         while one_past_max_index != min_index {
@@ -239,5 +239,19 @@ impl Page {
                 self.0[start..end].copy_from_slice(child.to_ne_bytes().as_slice());
             }
         }
+    }
+
+    pub fn internal_find(&self, key: usize) -> usize {
+        let mut min_index = 0;
+        let mut max_index = self.get_internal_num_keys();
+        while max_index != min_index {
+            let index = (min_index + max_index) / 2;
+            match self.get_internal_key(index).cmp(&key) {
+                Ordering::Equal | Ordering::Greater => max_index = index,
+                Ordering::Less => min_index = index + 1,
+            }
+        }
+
+        min_index
     }
 }

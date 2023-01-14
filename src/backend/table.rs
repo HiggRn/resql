@@ -1,4 +1,4 @@
-use super::{page, row, Cursor, Pager, Row};
+use super::{page::{self, NodeType}, row, Cursor, Pager, Row};
 
 pub struct Table {
     pub root_page_num: usize,
@@ -29,20 +29,21 @@ impl Table {
     }
 
     pub fn insert(&mut self, row: &Row) {
-        let page = self.pager.get_page(self.root_page_num);
-        let num_cells = page.get_leaf_num_cells();
-
         let key_to_insert = row.id as usize;
-        let cell_num = page.find(key_to_insert);
 
+        let (page_num, cell_num) = self.find(key_to_insert, self.root_page_num);
+
+        let page = self.pager.get_page(page_num);
+        let num_cells = page.get_leaf_num_cells();
         if cell_num < num_cells {
             let key_at_index = page.get_leaf_key(cell_num);
             if key_at_index == key_to_insert {
-                crate::error(format!("duplicate key '{key_to_insert}'").as_str())
+                crate::error(format!("duplicate key '{key_to_insert}'").as_str());
+                return;
             }
         }
 
-        let mut cursor = Cursor::from_pos(self, self.root_page_num, cell_num);
+        let mut cursor = Cursor::from_pos(self, page_num, cell_num);
         cursor.leaf_insert(key_to_insert, row);
     }
 
@@ -86,5 +87,17 @@ impl Table {
         println!("LEAF_HEADER_SIZE: {}", page::LEAF_HEADER_SIZE);
         println!("LEAF_CELL_SIZE: {}", page::LEAF_CELL_SIZE);
         println!("LEAF_MAX_CELLS: {}", page::LEAF_MAX_CELLS);
+    }
+
+    fn find(&mut self, key: usize, start_page_num: usize) -> (usize, usize) {
+        let start_page = self.pager.get_page(start_page_num);
+        
+        match start_page.get_type() {
+            NodeType::Leaf => (start_page_num, start_page.leaf_find(key)),
+            NodeType::Internal => {
+                let child_page_num = start_page.internal_find(key);
+                self.find(key, child_page_num)
+            },
+        }
     }
 }
