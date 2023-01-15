@@ -24,7 +24,9 @@ pub const COMMON_HEADER_SIZE: usize = TYPE_SIZE + IS_ROOT_SIZE + PARENT_PTR_SIZE
 // Leaf node header layout
 const LEAF_NUM_CELLS_OFFSET: usize = COMMON_HEADER_SIZE;
 const LEAF_NUM_CELLS_SIZE: usize = mem::size_of::<usize>();
-pub const LEAF_HEADER_SIZE: usize = COMMON_HEADER_SIZE + LEAF_NUM_CELLS_SIZE;
+const LEAF_NEXT_LEAF_OFFSET: usize = LEAF_NUM_CELLS_OFFSET + LEAF_NUM_CELLS_SIZE;
+const LEAF_NEXT_LEAF_SIZE: usize = mem::size_of::<usize>();
+pub const LEAF_HEADER_SIZE: usize = COMMON_HEADER_SIZE + LEAF_NUM_CELLS_SIZE + LEAF_NEXT_LEAF_SIZE;
 
 // Leaf node body layout
 const LEAF_KEY_OFFSET: usize = 0;
@@ -92,11 +94,19 @@ impl Page {
         self.set_type(NodeType::Leaf);
         self.set_is_root(false);
         self.set_leaf_num_cells(0);
+        self.set_leaf_next_leaf(0); // 0 represents no sibling. page 0 is reserved for root
     }
 
     pub fn get_leaf_num_cells(&self) -> usize {
         let start = LEAF_NUM_CELLS_OFFSET;
-        let end = LEAF_NUM_CELLS_OFFSET + LEAF_NUM_CELLS_SIZE;
+        let end = start + LEAF_NUM_CELLS_SIZE;
+
+        usize::from_ne_bytes(self.0[start..end].try_into().unwrap())
+    }
+
+    pub fn get_leaf_next_leaf(&self) -> usize {
+        let start = LEAF_NEXT_LEAF_OFFSET;
+        let end = start + LEAF_NEXT_LEAF_SIZE;
 
         usize::from_ne_bytes(self.0[start..end].try_into().unwrap())
     }
@@ -121,8 +131,14 @@ impl Page {
 
     pub fn set_leaf_num_cells(&mut self, num_cells: usize) {
         let start = LEAF_NUM_CELLS_OFFSET;
-        let end = LEAF_NUM_CELLS_OFFSET + LEAF_NUM_CELLS_SIZE;
+        let end = start + LEAF_NUM_CELLS_SIZE;
         self.0[start..end].clone_from_slice(&num_cells.to_ne_bytes());
+    }
+
+    pub fn set_leaf_next_leaf(&mut self, next_page_num: usize) {
+        let start = LEAF_NEXT_LEAF_OFFSET;
+        let end = start + LEAF_NEXT_LEAF_SIZE;
+        self.0[start..end].clone_from_slice(&next_page_num.to_ne_bytes());
     }
 
     pub fn set_leaf_cell(&mut self, cell_num: usize, (key, value): (usize, Vec<u8>)) {
@@ -169,13 +185,13 @@ impl Page {
 
     pub fn get_internal_num_keys(&self) -> usize {
         let start = INTERNAL_NUM_KEYS_OFFSET;
-        let end = INTERNAL_NUM_KEYS_OFFSET + INTERNAL_NUM_KEYS_SIZE;
+        let end = start + INTERNAL_NUM_KEYS_SIZE;
         usize::from_ne_bytes(self.0[start..end].try_into().unwrap())
     }
 
     pub fn get_internal_right_child(&self) -> usize {
         let start = INTERNAL_RIGHT_CHILD_OFFSET;
-        let end = INTERNAL_RIGHT_CHILD_OFFSET + INTERNAL_RIGHT_CHILD_SIZE;
+        let end = start + INTERNAL_RIGHT_CHILD_SIZE;
         usize::from_ne_bytes(self.0[start..end].try_into().unwrap())
     }
 
@@ -206,13 +222,13 @@ impl Page {
 
     pub fn set_internal_num_keys(&mut self, num_keys: usize) {
         let start = INTERNAL_NUM_KEYS_OFFSET;
-        let end = INTERNAL_NUM_KEYS_OFFSET + INTERNAL_NUM_KEYS_SIZE;
+        let end = start + INTERNAL_NUM_KEYS_SIZE;
         self.0[start..end].copy_from_slice(num_keys.to_ne_bytes().as_slice());
     }
 
     pub fn set_internal_right_child(&mut self, right_child_page_num: usize) {
         let start = INTERNAL_RIGHT_CHILD_OFFSET;
-        let end = INTERNAL_RIGHT_CHILD_OFFSET + INTERNAL_RIGHT_CHILD_SIZE;
+        let end = start + INTERNAL_RIGHT_CHILD_SIZE;
         self.0[start..end].copy_from_slice(right_child_page_num.to_ne_bytes().as_slice());
     }
 
@@ -243,7 +259,7 @@ impl Page {
 
     pub fn internal_find(&self, key: usize) -> usize {
         let mut min_index = 0;
-        let mut max_index = self.get_internal_num_keys();
+        let mut max_index = self.get_internal_num_keys(); // there is one more child than key
         while max_index != min_index {
             let index = (min_index + max_index) / 2;
             match self.get_internal_key(index).cmp(&key) {

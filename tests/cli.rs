@@ -296,3 +296,43 @@ fn test_search_internal_node() {
 
     clean_test(test_case, test)();
 }
+
+#[test]
+fn test_select() {
+    let test_case = "select";
+
+    let test = |test_filename: &str| {
+        let mut cmds = Vec::new();
+        for i in 1..16 {
+            cmds.push(format!("insert {i} user{i} person{i}@example.com"));
+        }
+        cmds.push("select".into());
+        cmds.push(".exit".into());
+        let (out, _) = run(cmds, test_filename);
+        let expected_out = [
+            "1: user1 person1@example.com",
+            "2: user2 person2@example.com",
+            "3: user3 person3@example.com",
+            "4: user4 person4@example.com",
+            "5: user5 person5@example.com",
+            "6: user6 person6@example.com",
+            "7: user7 person7@example.com",
+            "8: user8 person8@example.com",
+            "9: user9 person9@example.com",
+            "10: user10 person10@example.com",
+            "11: user11 person11@example.com",
+            "12: user12 person12@example.com",
+            "13: user13 person13@example.com",
+            "14: user14 person14@example.com",
+            "15: user15 person15@example.com",
+            "exitting...",
+            "",
+        ];
+        for (i, s) in out.iter().enumerate() {
+            let str = s.trim_start_matches(">> ").trim_end();
+            assert_eq!(str, expected_out[i]);
+        }
+    };
+
+    clean_test(test_case, test)();
+}

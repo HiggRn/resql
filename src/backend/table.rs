@@ -89,13 +89,14 @@ impl Table {
         println!("LEAF_MAX_CELLS: {}", page::LEAF_MAX_CELLS);
     }
 
-    fn find(&mut self, key: usize, start_page_num: usize) -> (usize, usize) {
+    pub fn find(&mut self, key: usize, start_page_num: usize) -> (usize, usize) {
         let start_page = self.pager.get_page(start_page_num);
         
         match start_page.get_type() {
             NodeType::Leaf => (start_page_num, start_page.leaf_find(key)),
             NodeType::Internal => {
-                let child_page_num = start_page.internal_find(key);
+                let child_num = start_page.internal_find(key);
+                let child_page_num = start_page.get_internal_child(child_num);
                 self.find(key, child_page_num)
             },
         }
