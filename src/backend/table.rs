@@ -1,8 +1,9 @@
-use super::{page::{self, NodeType}, row, Cursor, Pager, Row};
+use super::page::PageType;
+use super::{page, row, Cursor, Pager, Row};
 
 pub struct Table {
-    pub root_page_num: usize,
-    pub pager: Pager,
+    pub(crate) root_page_num: usize,
+    pub(crate) pager: Pager,
 }
 
 impl Table {
@@ -22,14 +23,14 @@ impl Table {
         }
     }
 
-    pub fn close(&mut self) {
+    pub(crate) fn close(&mut self) {
         let num_pages = self.pager.num_pages;
         for page_num in 0..num_pages {
             self.pager.flush(page_num);
         }
     }
 
-    pub fn insert(&mut self, row: &Row) {
+    pub(crate) fn insert(&mut self, row: &Row) {
         let key_to_insert = row.id as usize;
 
         let (page_num, cell_num) = self.find(key_to_insert, self.root_page_num);
@@ -48,7 +49,7 @@ impl Table {
         cursor.leaf_insert(key_to_insert, row);
     }
 
-    pub fn select(&mut self) {
+    pub(crate) fn select(&mut self) {
         let mut cursor = Cursor::from_start(self);
 
         while !cursor.end_of_table {
@@ -63,7 +64,7 @@ impl Table {
         }
     }
 
-    pub fn new_root(&mut self, right_child_page_num: usize) {
+    pub(super) fn new_root(&mut self, right_child_page_num: usize) {
         let root_copy = self.pager.copy_page(self.root_page_num).unwrap();
         let left_child_page_num = self.pager.get_unused_page_num();
         let left_child = self.pager.get_page(left_child_page_num);
@@ -85,7 +86,7 @@ impl Table {
         root.set_internal_right_child(right_child_page_num);
     }
 
-    pub fn print_constants() {
+    pub(crate) fn print_constants() {
         println!("Constants:\n");
         println!("ROW_SIZE: {}", row::ROW_SIZE);
         println!("COMMON_HEADER_SIZE: {}", page::COMMON_HEADER_SIZE);
@@ -94,26 +95,26 @@ impl Table {
         println!("LEAF_MAX_CELLS: {}", page::LEAF_MAX_CELLS);
     }
 
-    pub fn find(&mut self, key: usize, start_page_num: usize) -> (usize, usize) {
+    pub(super) fn find(&mut self, key: usize, start_page_num: usize) -> (usize, usize) {
         let start_page = self.pager.get_page(start_page_num);
-        
+
         match start_page.get_type() {
-            NodeType::Leaf => (start_page_num, start_page.leaf_find(key)),
-            NodeType::Internal => {
+            PageType::Leaf => (start_page_num, start_page.leaf_find(key)),
+            PageType::Internal => {
                 let child_num = start_page.internal_find(key);
                 let child_page_num = start_page.get_internal_child(child_num);
                 self.find(key, child_page_num)
-            },
+            }
         }
     }
 
-    pub fn internal_insert(&mut self, parent_page_num: usize, child_page_num: usize) {
+    pub(super) fn internal_insert(&mut self, parent_page_num: usize, child_page_num: usize) {
         let child = self.pager.get_page(child_page_num);
         let child_max_key = child.get_max_key();
-        
+
         let parent = self.pager.get_page(parent_page_num);
         let index = parent.internal_find(child_max_key);
-        
+
         let original_num_keys = parent.get_internal_num_keys();
         parent.set_internal_num_keys(original_num_keys + 1);
 

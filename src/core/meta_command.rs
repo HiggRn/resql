@@ -20,16 +20,12 @@ impl MetaCommand {
         match &result {
             MetaCommand::Exit => {
                 table.close();
-                Self::exit(0);
+                println!("exitting...");
+                std::process::exit(0);
             }
             MetaCommand::BTree => table.pager.print(table.root_page_num, 0),
             MetaCommand::Constants => Table::print_constants(),
             MetaCommand::Error(s) => crate::error(s),
         }
-    }
-
-    fn exit(code: i32) {
-        println!("exitting...");
-        std::process::exit(code);
     }
 }

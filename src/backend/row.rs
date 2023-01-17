@@ -3,22 +3,22 @@ use std::mem;
 
 #[derive(Clone, Default)]
 pub struct Row {
-    pub id: u32,
-    pub username: String,
-    pub email: String,
+    pub(crate) id: u32,
+    pub(crate) username: String,
+    pub(crate) email: String,
 }
 
-pub const MAX_USERNAME: usize = 31;
-pub const MAX_EMAIL: usize = 255;
+pub(crate) const MAX_USERNAME: usize = 31;
+pub(crate) const MAX_EMAIL: usize = 255;
 const ID_SIZE: usize = mem::size_of::<u32>();
 const USERNAME_SIZE: usize = MAX_USERNAME + 1;
 const EMAIL_SIZE: usize = MAX_EMAIL + 1;
 const USERNAME_OFFSET: usize = ID_SIZE;
 const EMAIL_OFFSET: usize = USERNAME_OFFSET + USERNAME_SIZE;
-pub const ROW_SIZE: usize = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
+pub(super) const ROW_SIZE: usize = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
 impl Row {
-    pub fn serialize(&self) -> Vec<u8> {
+    pub(super) fn serialize(&self) -> Vec<u8> {
         let mut buf = vec![0; ROW_SIZE];
         buf[0..ID_SIZE].clone_from_slice(&self.id.to_ne_bytes());
         Self::write_string(&mut buf, USERNAME_OFFSET, &self.username, USERNAME_SIZE);
@@ -27,7 +27,7 @@ impl Row {
         buf
     }
 
-    pub fn deserialize(buf: &[u8]) -> Self {
+    pub(super) fn deserialize(buf: &[u8]) -> Self {
         let mut bytes = vec![0; ROW_SIZE];
         bytes.clone_from_slice(&buf[0..ROW_SIZE]);
 

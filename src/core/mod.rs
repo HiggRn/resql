@@ -1,6 +1,6 @@
-pub mod input_buffer;
-pub mod meta_command;
-pub mod statement;
+mod input_buffer;
+mod meta_command;
+mod statement;
 
 pub type InputBuffer = input_buffer::InputBuffer;
 pub type MetaCommand = meta_command::MetaCommand;
