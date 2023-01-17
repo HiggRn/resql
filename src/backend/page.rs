@@ -17,9 +17,9 @@ const TYPE_OFFSET: usize = 0;
 const TYPE_SIZE: usize = mem::size_of::<u8>();
 const IS_ROOT_OFFSET: usize = TYPE_SIZE;
 const IS_ROOT_SIZE: usize = mem::size_of::<u8>();
-const PARENT_PTR_OFFSET: usize = IS_ROOT_OFFSET + IS_ROOT_SIZE;
-const PARENT_PTR_SIZE: usize = mem::size_of::<&Page>();
-pub const COMMON_HEADER_SIZE: usize = TYPE_SIZE + IS_ROOT_SIZE + PARENT_PTR_SIZE;
+const PARENT_OFFSET: usize = IS_ROOT_OFFSET + IS_ROOT_SIZE;
+const PARENT_SIZE: usize = mem::size_of::<usize>();
+pub const COMMON_HEADER_SIZE: usize = TYPE_SIZE + IS_ROOT_SIZE + PARENT_SIZE;
 
 // Leaf node header layout
 const LEAF_NUM_CELLS_OFFSET: usize = COMMON_HEADER_SIZE;
@@ -52,6 +52,8 @@ const INTERNAL_KEY_SIZE: usize = mem::size_of::<usize>();
 const INTERNAL_CHILD_SIZE: usize = mem::size_of::<usize>();
 const INTERNAL_CELL_SIZE: usize = INTERNAL_KEY_SIZE + INTERNAL_CHILD_SIZE;
 
+pub const INTERNAL_MAX_CELLS: usize = 3; // keep this small for testing
+
 // Common node methods
 impl Page {
     pub fn get_type(&self) -> NodeType {
@@ -63,6 +65,13 @@ impl Page {
 
     pub fn get_is_root(&self) -> bool {
         !matches!(self.0[IS_ROOT_OFFSET], 0)
+    }
+
+    pub fn get_parent(&self) -> usize {
+        let start = PARENT_OFFSET;
+        let end = start + PARENT_SIZE;
+
+        usize::from_ne_bytes(self.0[start..end].try_into().unwrap())
     }
 
     pub fn get_max_key(&self) -> usize {
@@ -84,6 +93,12 @@ impl Page {
             false => 0,
             true => 1,
         };
+    }
+
+    pub fn set_parent(&mut self, parent_page_num: usize) {
+        let start = PARENT_OFFSET;
+        let end = start + PARENT_SIZE;
+        self.0[start..end].clone_from_slice(&parent_page_num.to_ne_bytes());
     }
 }
 
@@ -269,5 +284,10 @@ impl Page {
         }
 
         min_index
+    }
+
+    pub fn internal_update_key(&mut self, old_key: usize, new_key: usize) {
+        let old_child_index = self.internal_find(old_key);
+        self.set_internal_key(old_child_index, new_key);
     }
 }

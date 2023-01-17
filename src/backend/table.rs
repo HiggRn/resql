@@ -13,6 +13,7 @@ impl Table {
             let page = pager.get_page(0);
             page.init_leaf();
             page.set_is_root(true);
+            pager.num_pages = 1;
         }
 
         Self {
@@ -63,13 +64,17 @@ impl Table {
     }
 
     pub fn new_root(&mut self, right_child_page_num: usize) {
-        self.pager.num_pages += 1;
         let root_copy = self.pager.copy_page(self.root_page_num).unwrap();
         let left_child_page_num = self.pager.get_unused_page_num();
         let left_child = self.pager.get_page(left_child_page_num);
         left_child.clone_from(&root_copy);
         left_child.set_is_root(false);
+        left_child.set_parent(self.root_page_num);
         let left_child_max_key = left_child.get_max_key();
+        self.pager.num_pages += 1;
+
+        let right_child = self.pager.get_page(right_child_page_num);
+        right_child.set_parent(self.root_page_num);
 
         let root = self.pager.get_page(self.root_page_num);
         root.init_internal();
@@ -99,6 +104,43 @@ impl Table {
                 let child_page_num = start_page.get_internal_child(child_num);
                 self.find(key, child_page_num)
             },
+        }
+    }
+
+    pub fn internal_insert(&mut self, parent_page_num: usize, child_page_num: usize) {
+        let child = self.pager.get_page(child_page_num);
+        let child_max_key = child.get_max_key();
+        
+        let parent = self.pager.get_page(parent_page_num);
+        let index = parent.internal_find(child_max_key);
+        
+        let original_num_keys = parent.get_internal_num_keys();
+        parent.set_internal_num_keys(original_num_keys + 1);
+
+        if original_num_keys > page::INTERNAL_MAX_CELLS {
+            unimplemented!("need to implement splitting internal node");
+        }
+
+        let right_child_page_num = parent.get_internal_right_child();
+        let right_child = self.pager.get_page(right_child_page_num);
+        let right_child_max_key = right_child.get_max_key();
+
+        let parent = self.pager.get_page(parent_page_num); // the same as 'parent' above
+        if child_max_key > right_child_max_key {
+            // Replace right child
+            parent.set_internal_child(original_num_keys, right_child_page_num);
+            parent.set_internal_key(original_num_keys, right_child_max_key);
+            parent.set_internal_right_child(child_page_num);
+        } else {
+            // Make room for the new cell
+            for i in (index + 1..=original_num_keys).rev() {
+                let key = parent.get_internal_key(i);
+                let child = parent.get_internal_child(i);
+                parent.set_internal_key(i - 1, key);
+                parent.set_internal_child(i - 1, child);
+            }
+            parent.set_internal_child(index, child_page_num);
+            parent.set_internal_key(index, child_max_key);
         }
     }
 }

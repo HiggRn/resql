@@ -336,3 +336,94 @@ fn test_select() {
 
     clean_test(test_case, test)();
 }
+
+#[test]
+fn test_multiple_leaves() {
+    let test_case = "multiple_leaves";
+
+    let test = |test_filename: &str| {
+        let cmds = vec![
+            "insert 18 user18 person18@example.com".into(),
+            "insert 7 user7 person7@example.com".into(),
+            "insert 10 user10 person10@example.com".into(),
+            "insert 29 user29 person29@example.com".into(),
+            "insert 23 user23 person23@example.com".into(),
+            "insert 4 user4 person4@example.com".into(),
+            "insert 14 user14 person14@example.com".into(),
+            "insert 30 user30 person30@example.com".into(),
+            "insert 15 user15 person15@example.com".into(),
+            "insert 26 user26 person26@example.com".into(),
+            "insert 22 user22 person22@example.com".into(),
+            "insert 19 user19 person19@example.com".into(),
+            "insert 2 user2 person2@example.com".into(),
+            "insert 1 user1 person1@example.com".into(),
+            "insert 21 user21 person21@example.com".into(),
+            "insert 11 user11 person11@example.com".into(),
+            "insert 6 user6 person6@example.com".into(),
+            "insert 20 user20 person20@example.com".into(),
+            "insert 5 user5 person5@example.com".into(),
+            "insert 8 user8 person8@example.com".into(),
+            "insert 9 user9 person9@example.com".into(),
+            "insert 3 user3 person3@example.com".into(),
+            "insert 12 user12 person12@example.com".into(),
+            "insert 27 user27 person27@example.com".into(),
+            "insert 17 user17 person17@example.com".into(),
+            "insert 16 user16 person16@example.com".into(),
+            "insert 13 user13 person13@example.com".into(),
+            "insert 24 user24 person24@example.com".into(),
+            "insert 25 user25 person25@example.com".into(),
+            "insert 28 user28 person28@example.com".into(),
+            ".btree".into(),
+            ".exit".into(),
+        ];
+        let (out, _) = run(cmds, test_filename);
+        let expected_out = [
+            "- internal (size 3)",
+            "  - leaf (size 7)",
+            "    - key 1",
+            "    - key 2",
+            "    - key 3",
+            "    - key 4",
+            "    - key 5",
+            "    - key 6",
+            "    - key 7",
+            "  - key 7",
+            "  - leaf (size 8)",
+            "    - key 8",
+            "    - key 9",
+            "    - key 10",
+            "    - key 11",
+            "    - key 12",
+            "    - key 13",
+            "    - key 14",
+            "    - key 15",
+            "  - key 15",
+            "  - leaf (size 7)",
+            "    - key 16",
+            "    - key 17",
+            "    - key 18",
+            "    - key 19",
+            "    - key 20",
+            "    - key 21",
+            "    - key 22",
+            "  - key 22",
+            "  - leaf (size 8)",
+            "    - key 23",
+            "    - key 24",
+            "    - key 25",
+            "    - key 26",
+            "    - key 27",
+            "    - key 28",
+            "    - key 29",
+            "    - key 30",
+            "exitting...",
+            "",
+        ];
+        for (i, s) in out.iter().enumerate() {
+            let str = s.trim_start_matches(">> ").trim_end();
+            assert_eq!(str, expected_out[i]);
+        }
+    };
+
+    clean_test(test_case, test)();
+}

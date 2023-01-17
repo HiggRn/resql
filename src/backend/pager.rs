@@ -155,13 +155,14 @@ impl Pager {
                     indent(indentation_level + 1);
                     println!("- key {}", page.get_leaf_key(i));
                 }
-            }
+            },
             NodeType::Internal => {
                 let num_keys = page.get_internal_num_keys();
                 indent(indentation_level);
                 println!("- internal (size {num_keys})");
                 for i in 0..num_keys {
                     let child = page.get_internal_child(i);
+
                     self.print(child, indentation_level + 1);
 
                     indent(indentation_level + 1);
@@ -169,7 +170,7 @@ impl Pager {
                 }
                 let right_child = page.get_internal_right_child();
                 self.print(right_child, indentation_level + 1);
-            }
+            },
         }
     }
 }
